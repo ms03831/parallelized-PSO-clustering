@@ -7,6 +7,7 @@
 3. Syed Ammar Ahmed sa04050
 
 ### Problem Definition
+![Clustering](merge3cluster.jpg)
 Clustering is a very important task in unsupervised Machine Learning. One of the most popular algorithms used for clustering is the K-means algorithm and therefore has been a focus of many researchers. But as with all algorithms, K-means is not perfect. Many fronts have been explored in recent years to improve both the accuracy and execution time of this algorithm. Several of these attempts involved using a well known Swarm Intelligence approach known as Particle Swarm Optimization (PSO). This project aims to utilize and parallelize a hybrid approach using both PSO and K-Means for data clustering. 
 
 ### Literature Review
