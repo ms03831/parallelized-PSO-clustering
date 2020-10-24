@@ -15,8 +15,19 @@ PSO has been used in literature to solve the problem of initial cluster centers 
 
 Ahmadyfard et. al worked on the limitations on PSO and noted that PSO algorithm can successfully converge during the initial stages of a global search, but around global optimum, the search process becomes very slow [3]. K-Means however achieves faster convergence when it is near optimal solution. The accuracy of K-Means is also higher which is what makes it so popular. They proposed a hybrid algorithm called "PSO-KM" and experimentally argued that the hybrid approach has more potential than both K-Means and PSO [3]. 
 
+### Performance Analysis
+We will analyze the performance and results of our algorithm on not one but several clustering benchmark datasets found [here](http://cs.joensuu.fi/sipu/datasets/) and present our analysis on the improvement (if any) of the parallelized GPU version of the hybrid approach over the CPU version. 
+
 ### Research and Novelty
 From our research and exploration so far, we have realized that the problem of using a hybrid approach in itself has room for more research, however, our aim is not to improve the algorithm but rather present a parallelized version for it, which as we understand has not yet been properly explored. Therefore, we believe this project has a lot of research potential and can lead to a publication. As the task is not very simple, and would require a lot of research we believe this also **justifies three members** in our team.
+
+### Type of project
+We believe that our projects falls in the category of "Implement a GPU version of some existing computationally-intensive CPU code." The justification for this is outlined in the previous sections on novelty, problem definition and analysis.
+
+### Major goals of the project
+1. Implement the CPU version of the hybrid approach
+2. Parallelize the hybrid approach and implement the GPU version on pyCUDA or Numba.
+3. Performance analysis (outlined above)
 
 ## References
 [1]: M. Zhao, H. Tang, J. Guo, and Y. Sun, “Data Clustering Using Particle Swarm Optimization,” _Lecture Notes in Electrical Engineering Future Information Technology_, pp. 607–612, 2014.
