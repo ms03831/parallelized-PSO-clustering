@@ -39,8 +39,9 @@ def fitness(particles_pos, data, index):
 
 
 def update(particles_pos, particles_vel, particles_best_pos, global_best_pos, i, w, c1, c2):
+    r1, r2 = random(), random()
     for d in range(len(particles_pos[i])):
-        particles_vel[i][d] = w * particles_vel[i][d] + c1 * random() * (particles_best_pos[i][d] - particles_pos[i][d]) + c2 * random() * (global_best_pos[d] - particles_pos[i][d])
+        particles_vel[i][d] = w * particles_vel[i][d] + c1 * r1 * (particles_best_pos[i][d] - particles_pos[i][d]) + c2 * r2 * (global_best_pos[d] - particles_pos[i][d])
         particles_pos[i][d] += particles_vel[i][d]
     
 
@@ -50,8 +51,8 @@ def main():
     particles = 10
     iterations = 100
     w = 0.95
-    c1 = 0.1
-    c2 = 0.2
+    c1 = 0.05
+    c2 = 0.3
 
     data = random_data(n, c)
     particles_pos, particles_vel = init_particles(particles, c, data)
