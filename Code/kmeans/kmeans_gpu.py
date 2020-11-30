@@ -7,7 +7,7 @@ from numba import njit, cuda
 import numpy
 import numba
 
-@njit
+@cuda.jit(device=True)
 def my_inf():
     return np.inf
 
@@ -20,37 +20,78 @@ def initializePoints(n, c = 3):
     random.shuffle(l)
     return l
 
-def change(prev, current): #to compute change in previous and current centroids
+def changeCPU(prev, current): #to compute change in previous and current centroids
     prev = np.array(prev); current = np.array(current)
     return np.linalg.norm(prev-current)
 
-def cluster(points,K,visuals = True):
-    clusters=[]
+def change(prev, current, changeInCentroidsGPU): #to compute change in previous and current centroids
+    # prev = np.array(prev); 
+    # current = np.array(current)
+    changeInCentroidsGPU[0] = np.linalg.norm(prev-current)
+
+def calculateMeanNewClusters(centroidsGPU, clusterGPU):
+    for i in range(centroidsGPU.shape[0]):
+        for j in range(clusterGPU.shape[0]):
+            pointcount = 0
+            temp = [0, 0]
+            if clusterGPU[j][0] == i:
+                pointcount += 1
+                temp[0] += clusterGPU[j][1]
+                temp[1] += clusterGPU[j][2]
+            centroidsGPU[i][0] = temp[0]/pointcount
+            centroidsGPU[i][1] = temp[1]/pointcount
+    return centroidsGPU
     
+@cuda.jit
+def findNearestCluster(xPointsGPU, yPointsGPU, centroidsGPU, clusterGPU):
+    p = cuda.grid(1)
+    minDistanceCentroid = -1
+    minDistance = my_inf()
+    for c in range(len(centroidsGPU)):
+        distance = ((xPointsGPU[p] - centroidsGPU[c][0]) ** 2 + 
+                    (yPointsGPU[p] - centroidsGPU[c][1]) ** 2) ** 0.5
+        if minDistance > distance:
+            minDistance = distance
+            minDistanceCentroid = c
+    clusterGPU[p][0] = minDistanceCentroid
+
+def myCluster(points, K, visuals = True):
+    blockdim = 16
+    griddim = 1 + (len(points) - 1)//blockdim
+
     #Your kmeans code will go here to cluster given points in K clsuters. If visuals = True, the code will also plot graphs to show the current state of clustering
     xPoints, yPoints = np.array([i[0] for i in points]), np.array([i[1] for i in points])
     centroids = np.array([points[i] for i in rand.randint(0, len(points), K)]) #random centroids
     prevCentroids = np.zeros(shape=(3,2))
-    changeInCentroids = change(prevCentroids, centroids)
+    changeInCentroids = np.array(changeCPU(prevCentroids, centroids))
     iteration = 0
-    while changeInCentroids > 0: #stopping condition
-        iteration+=1
-        changeInCentroids = change(prevCentroids, centroids)
-        cluster = dict([(c, []) for c in range(len(centroids))])
-        for p in range(len(points)):
-            belongsTo = dict()
-            minDistanceCentroid = np.argmin([((xPoints[p] - c[0]) ** 2 + (yPoints[p] - c[1]) ** 2) ** 0.5 
-                                             for c in centroids]) #index of nearest centroid
-            #belongsTo[points[p]] = centroids[minDistanceCentroid] 
-            cluster[minDistanceCentroid].append(points[p])
-        prevCentroids = centroids.copy()
-        newCentroids = [0]*K
-        for i in range(K):
-            newCentroids[i] = np.mean(cluster[i], axis = 0)
-        centroids = newCentroids.copy()
-        clusters = [cluster[i] for i in range(K)]
-    return clusters
 
+    xPointsGPU = cuda.to_device(xPoints)
+    yPointsGPU = cuda.to_device(xPoints)
+    centroidsGPU = cuda.to_device(centroids)
+    prevCentroidsGPU = cuda.to_device(prevCentroids)
+
+    changeInCentroidsGPU =  cuda.device_array_like(changeInCentroids)
+    
+    clusters = np.zeros((len(points), 3))
+    clusterGPU = cuda.device_array_like(clusters)
+
+    while changeInCentroids[0] > 0: #stopping condition
+        iteration += 1
+        changeInCentroids[0] = changeCPU(prevCentroidsGPU, centroids)
+        
+        findNearestCluster[griddim, blockdim](xPointsGPU, yPointsGPU, centroidsGPU, clusterGPU)
+        numba.cuda.synchronize()
+        
+        prevCentroids = centroidsGPU.copy_to_host()
+        prevCentroidsGPU = cuda.to_device(prevCentroids)
+        
+        centroids = centroidsGPU.copy_to_host()
+
+        centroids = calculateMeanNewClusters(centroids, clusterGPU)        
+        centroidsGPU = cuda.to_device(centroidsGPU)
+    clusters = clusterGPU.copy_to_host()
+    return clusters
 
 def SSE(clusters):
     centroids = np.array([np.mean(clusters[i], axis = 0) for i in range(len(clusters))])
@@ -63,21 +104,21 @@ def clusterQuality(clusters):
     return score
 
 def runKMeans(points, K, N, visuals):
-    clusters = []
+    clusters = None
+    N = 1
     minimumScore, minimumScoreCluster = math.inf, None
-    for i in range(N):
-        clusters = cluster(points, K, visuals = False)
-        centroids = np.array([np.mean(clusters[i], axis = 0) for i in range(len(clusters))])
-        if ((i + 1) % 5 == 0):    
-            plt.figure()
-            for c in clusters:
-                plt.scatter(*zip(*c), alpha = 0.4)
-            plt.plot([centroids[i][0] for i in range(K)], [centroids[i][1] for i in range(K)], 'kX', markersize=10, label="clusters")
-            plt.legend()
-            plt.title("{0} points clustered into {1} clusters in iteration number {2}".format(len(points), K, i + 1))
-            plt.show()
-        score = clusterQuality(clusters)
-        if score < minimumScore: 
-            minimumScore = score
-            mininumScoreCluster = clusters
-    return clusters
+    myCluster(points, K, visuals = False)
+    #     centroids = np.array([np.mean(clusters[i], axis = 0) for i in range(len(clusters))])
+    #     if ((i + 1) % 5 == 0):    
+    #         plt.figure()
+    #         for c in clusters:
+    #             plt.scatter(*zip(*c), alpha = 0.4)
+    #         plt.plot([centroids[i][0] for i in range(K)], [centroids[i][1] for i in range(K)], 'kX', markersize=10, label="clusters")
+    #         plt.legend()
+    #         plt.title("{0} points clustered into {1} clusters in iteration number {2}".format(len(points), K, i + 1))
+    #         plt.show()
+    #     score = clusterQuality(clusters)
+    #     if score < minimumScore: 
+    #         minimumScore = score
+    #         mininumScoreCluster = clusters
+    # return clusters
