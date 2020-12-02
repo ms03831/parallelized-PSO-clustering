@@ -60,25 +60,25 @@ def findNearestCluster(xPointsGPU, yPointsGPU, centroidsGPU, clusterGPU):
 def myCluster(points, K, visuals = True):
     blockdim = 16
     griddim = 1 + (len(points) - 1)//blockdim
-    print("WHAT")
+
     #Your kmeans code will go here to cluster given points in K clsuters. If visuals = True, the code will also plot graphs to show the current state of clustering
     xPoints, yPoints = np.array([i[0] for i in points]), np.array([i[1] for i in points])
     centroids = np.array([points[i] for i in rand.randint(0, len(points), K)]) #random centroids
     prevCentroids = np.zeros(shape=(3,2))
     changeInCentroids = np.array(changeCPU(prevCentroids, centroids))
     iteration = 0
-    print("HELLO ", changeInCentroids)
+
     xPointsGPU = cuda.to_device(xPoints)
     yPointsGPU = cuda.to_device(xPoints)
     centroidsGPU = cuda.to_device(centroids)
     prevCentroidsGPU = cuda.to_device(prevCentroids)
 
-    #changeInCentroidsGPU =  cuda.device_array_like(changeInCentroids)
+    changeInCentroidsGPU =  cuda.device_array_like(changeInCentroids)
     
     clusters = np.zeros((len(points), 3))
     clusterGPU = cuda.device_array_like(clusters)
-    
-    while False: #changeInCentroids > 0: #stopping condition
+    print("HELLO ", changeInCentroids)
+    while changeInCentroids[0] > 0: #stopping condition
         iteration += 1
         changeInCentroids[0] = changeCPU(prevCentroidsGPU, centroids)
         
