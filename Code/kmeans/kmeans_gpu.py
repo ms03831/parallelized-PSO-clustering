@@ -40,8 +40,9 @@ def calculateMeanNewClusters(centroidsGPU, clusterGPU):
                 pointcount += 1
                 temp[0] += clusterGPU[j][1]
                 temp[1] += clusterGPU[j][2]
-        centroidsGPU[i][0] = temp[0]/pointcount
-        centroidsGPU[i][1] = temp[1]/pointcount
+        if pointcount:
+            centroidsGPU[i][0] = temp[0]/pointcount
+            centroidsGPU[i][1] = temp[1]/pointcount
     return centroidsGPU
     
 @cuda.jit
@@ -65,7 +66,7 @@ def myCluster(points, K, visuals = True):
     xPoints, yPoints = np.array([i[0] for i in points]), np.array([i[1] for i in points])
     centroids = np.array([points[i] for i in rand.randint(0, len(points), K)]) #random centroids
     prevCentroids = np.zeros(shape=(3,2))
-    changeInCentroids = np.array(changeCPU(prevCentroids, centroids))
+    changeInCentroids = np.array([changeCPU(prevCentroids, centroids)])
     iteration = 0
 
     xPointsGPU = cuda.to_device(xPoints)
@@ -77,7 +78,7 @@ def myCluster(points, K, visuals = True):
     
     clusters = np.zeros((len(points), 3))
     clusterGPU = cuda.device_array_like(clusters)
-    print("HELLO ", changeInCentroids)
+    print("HELLO ", changeInCentroids.shape)
     while changeInCentroids[0] > 0: #stopping condition
         iteration += 1
         changeInCentroids[0] = changeCPU(prevCentroidsGPU, centroids)
@@ -124,3 +125,4 @@ def runKMeans(points, K, N, visuals):
     #         minimumScore = score
     #         mininumScoreCluster = clusters
     # return clusters
+
