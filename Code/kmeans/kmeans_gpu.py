@@ -18,28 +18,30 @@ def initializePoints(n, c = 3):
             for j in range(c) for i in range(n)
         ]
     random.shuffle(l)
-    return l
+    return np.array(l)
 
 def changeCPU(prev, current): #to compute change in previous and current centroids
     prev = np.array(prev); current = np.array(current)
     return np.linalg.norm(prev-current)
 
 def change(prev, current, changeInCentroidsGPU): #to compute change in previous and current centroids
-    # prev = np.array(prev); 
-    # current = np.array(current)
-    changeInCentroidsGPU[0] = np.linalg.norm(prev-current)
+    temp = 0.
+    for i in range(prev.shape[0]):
+        temp += ( (prev[i][0] - current[i][0]) ** 2 + 
+                  (prev[i][1] - current[i][1]) ** 2   )
+    changeInCentroidsGPU[0] = temp ** 0.5
 
 def calculateMeanNewClusters(centroidsGPU, clusterGPU):
     for i in range(centroidsGPU.shape[0]):
+        pointcount = 0
+        temp = [0, 0]
         for j in range(clusterGPU.shape[0]):
-            pointcount = 0
-            temp = [0, 0]
             if clusterGPU[j][0] == i:
                 pointcount += 1
                 temp[0] += clusterGPU[j][1]
                 temp[1] += clusterGPU[j][2]
-            centroidsGPU[i][0] = temp[0]/pointcount
-            centroidsGPU[i][1] = temp[1]/pointcount
+        centroidsGPU[i][0] = temp[0]/pointcount
+        centroidsGPU[i][1] = temp[1]/pointcount
     return centroidsGPU
     
 @cuda.jit
