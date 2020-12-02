@@ -28,7 +28,7 @@ def cluster(points,K,visuals = True):
     #If visuals = True, the code will also plot graphs to show the current state of clustering
     xPoints, yPoints = np.array([i[0] for i in points]), np.array([i[1] for i in points])
     centroids = np.array([points[i] for i in rand.randint(0, len(points), K)]) #random centroids
-    prevCentroids = np.zeros(shape=(3,2))
+    prevCentroids = np.zeros(shape=(K,2))
     changeInCentroids = change(prevCentroids, centroids)
     iteration = 0
     while changeInCentroids > 0: #stopping condition
