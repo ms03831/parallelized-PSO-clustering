@@ -17,28 +17,22 @@ def change(prev, current): #to compute change in previous and current centroids
     prev = np.array(prev); current = np.array(current)
     return np.linalg.norm(prev-current)
 
-
-def findNearestCluster():
-    minDistanceCentroid = np.argmin([((xPoints[p] - c[0]) ** 2 + (yPoints[p] - c[1]) ** 2) ** 0.5 
-                                    for c in centroids])
-
 def cluster(points,K,visuals = True):
     clusters=[]
     #Your kmeans code will go here to cluster given points in K clsuters. 
     #If visuals = True, the code will also plot graphs to show the current state of clustering
-    xPoints, yPoints = np.array([i[0] for i in points]), np.array([i[1] for i in points])
     centroids = np.array([points[i] for i in rand.randint(0, len(points), K)]) #random centroids
-    prevCentroids = np.zeros(shape=(K,2))
+    prevCentroids = np.zeros(shape=centroids.shape)
     changeInCentroids = change(prevCentroids, centroids)
     iteration = 0
     while changeInCentroids > 0: #stopping condition
         iteration += 1
         changeInCentroids = change(prevCentroids, centroids)
-        print("change in centroids ", changeInCentroids)
+        
         cluster = dict([(c, []) for c in range(len(centroids))])
         for p in range(len(points)):
             belongsTo = dict()
-            minDistanceCentroid = np.argmin([((xPoints[p] - c[0]) ** 2 + (yPoints[p] - c[1]) ** 2) ** 0.5 
+            minDistanceCentroid = np.argmin([np.linalg.norm(points[p] - c) 
                                              for c in centroids]) #index of nearest centroid
             #belongsTo[points[p]] = centroids[minDistanceCentroid] 
             cluster[minDistanceCentroid].append(points[p])
