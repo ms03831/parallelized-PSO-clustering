@@ -56,14 +56,13 @@ def cluster(points,K,visuals = True):
     return np.array(clusters), np.array(centroids)
 
 
-def SSE(clusters):
-    centroids = np.array([np.mean(clusters[i], axis = 0) for i in range(len(clusters))])
-    distances = np.array([clusters[i] - centroids[i] for i in range(len(clusters))])
+def SSE(points, clusters, centroids):
+    distances = np.array([points[i] - centroids[int(clusters[i])] for i in range(len(points))])
     squaredDistances = np.array([np.linalg.norm(distances[i])**2 for i in range(len(clusters))])
     return np.sum(squaredDistances)
 
-def clusterQuality(clusters):
-    score = SSE(clusters)
+def clusterQuality(points, clusters, centroids):
+    score = SSE(points, clusters, centroids)
     return score
 
 def runKMeansCPU(points, K, N, visuals):
@@ -80,7 +79,7 @@ def runKMeansCPU(points, K, N, visuals):
             plt.legend()
             plt.title("{0} points clustered into {1} clusters in iteration number {2}".format(len(points), K, i + 1))
             plt.show()
-        score = clusterQuality(clusters)
+        score = clusterQuality(points, clusters, centroids)
         if score < minimumScore: 
             minimumScore = score
             mininumScoreCluster = clusters
@@ -96,4 +95,28 @@ def runKMeansCPU(points, K, N, visuals):
     # plt.legend()
     # plt.title("{0} points clustered into {1} clusters in iteration number {2}".format(len(points), K, i + 1))
     # plt.show()
-    return clusters
+    return clusters, centroids
+
+ITER = 1
+
+seed = 20
+np.random.seed(seed)
+random.seed(seed)
+
+K = 3
+N = 50
+points = initializePoints(N, K)
+
+#points, labels, K = getPointsFromDataDigits()
+
+# plt.scatter(*zip(*points), color='red', alpha = 0.2, edgecolor='blue')
+# plt.title("INITIAL POINTS")
+# plt.show()
+
+plt.scatter(points[:, 0], points[:, 1])
+plt.title("INITIAL POINTS")
+plt.show()
+
+clusters, centroids = runKMeans(points,K,ITER,True)
+print ("The score of best Kmeans clustering is:", clusterQuality(points, clusters, centroids))
+
