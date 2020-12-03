@@ -11,7 +11,7 @@ def initializePoints(n, c = 3):
             for j in range(c) for i in range(n)
         ]
     random.shuffle(l)
-    return l
+    return np.array(l)
 
 def change(prev, current): #to compute change in previous and current centroids
     prev = np.array(prev); current = np.array(current)
@@ -57,7 +57,7 @@ def cluster(points,K,visuals = True):
 
 
 def SSE(points, clusters, centroids):
-    distances = np.array([points[i] - centroids[int(clusters[i])] for i in range(len(points))])
+    distances = np.array([clusters[i] - centroids[i] for i in range(len(clusters))])
     squaredDistances = np.array([np.linalg.norm(distances[i])**2 for i in range(len(clusters))])
     return np.sum(squaredDistances)
 
@@ -117,6 +117,6 @@ plt.scatter(points[:, 0], points[:, 1])
 plt.title("INITIAL POINTS")
 plt.show()
 
-clusters, centroids = runKMeans(points,K,ITER,True)
+clusters, centroids = runKMeansCPU(points,K,ITER,True)
 print ("The score of best Kmeans clustering is:", clusterQuality(points, clusters, centroids))
 
