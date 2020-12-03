@@ -17,6 +17,12 @@ def change(prev, current): #to compute change in previous and current centroids
     prev = np.array(prev); current = np.array(current)
     return np.linalg.norm(prev-current)
 
+def calcDistance(point, centroid):
+    temp = 0.
+    for d in range(len(point)):
+        temp += ( (point[d] - centroid[d]) ** 2 )
+    return temp ** 0.5 
+                  
 def cluster(points,K,visuals = True):
     clusters=[]
     #Your kmeans code will go here to cluster given points in K clsuters. 
@@ -32,7 +38,7 @@ def cluster(points,K,visuals = True):
         cluster = dict([(c, []) for c in range(len(centroids))])
         for p in range(len(points)):
             belongsTo = dict()
-            minDistanceCentroid = np.argmin([np.linalg.norm(points[p] - c) 
+            minDistanceCentroid = np.argmin([calcDistance(points[p], c) 
                                              for c in centroids]) #index of nearest centroid
             #belongsTo[points[p]] = centroids[minDistanceCentroid] 
             cluster[minDistanceCentroid].append(points[p])
@@ -60,7 +66,7 @@ def clusterQuality(clusters):
     score = SSE(clusters)
     return score
 
-def runKMeans(points, K, N, visuals):
+def runKMeansCPU(points, K, N, visuals):
     clusters = []
     minimumScore, minimumScoreCluster = math.inf, None
     for i in range(N):
@@ -90,4 +96,4 @@ def runKMeans(points, K, N, visuals):
     # plt.legend()
     # plt.title("{0} points clustered into {1} clusters in iteration number {2}".format(len(points), K, i + 1))
     # plt.show()
-    return clusters, colors
+    return clusters
