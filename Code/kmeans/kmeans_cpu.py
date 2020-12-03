@@ -82,8 +82,8 @@ def runKMeans(points, K, N, visuals):
     for i in points:
         colors.append(((centroids - i) ** 2).sum(axis = 1).argmin())
     #print(colors)
-    #plt.scatter(*zip(*points), c= colors)
-    #plt.show()
+    plt.scatter(points[:, 0], points[:, 1], c= colors)
+    plt.show()
     # for c in clusters:
     #     plt.scatter(*zip(*c), alpha = 0.4)
     # plt.plot([centroids[i][0] for i in range(K)], [centroids[i][1] for i in range(K)], 'kX', markersize=10, label="clusters")
