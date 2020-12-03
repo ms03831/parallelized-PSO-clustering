@@ -32,8 +32,9 @@ def cluster(points,K,visuals = True):
     changeInCentroids = change(prevCentroids, centroids)
     iteration = 0
     while changeInCentroids > 0: #stopping condition
-        iteration+=1
+        iteration += 1
         changeInCentroids = change(prevCentroids, centroids)
+        print("change in centroids ", changeInCentroids)
         cluster = dict([(c, []) for c in range(len(centroids))])
         for p in range(len(points)):
             belongsTo = dict()
@@ -42,12 +43,11 @@ def cluster(points,K,visuals = True):
             #belongsTo[points[p]] = centroids[minDistanceCentroid] 
             cluster[minDistanceCentroid].append(points[p])
         prevCentroids = centroids.copy()
-        newCentroids = [0]*K
+        centroids = np.zeros(centroids.shape)
         for i in range(K):
-            newCentroids[i] = np.mean(cluster[i], axis = 0)
-        centroids = newCentroids.copy()
+            centroids[i] = np.mean(cluster[i], axis = 0)
         clusters = [cluster[i] for i in range(K)]
-    return clusters
+    return np.array(clusters), np.array(centroids)
 
 
 def SSE(clusters):
@@ -64,8 +64,8 @@ def runKMeans(points, K, N, visuals):
     clusters = []
     minimumScore, minimumScoreCluster = math.inf, None
     for i in range(N):
-        clusters = cluster(points, K, visuals = False)
-        centroids = np.array([np.mean(clusters[i], axis = 0) for i in range(len(clusters))])
+        clusters, centroids = cluster(points, K, visuals = False)
+        print(centroids.shape)
         if ((i + 1) % 5 == 0):    
             plt.figure()
             for c in clusters:
@@ -78,4 +78,10 @@ def runKMeans(points, K, N, visuals):
         if score < minimumScore: 
             minimumScore = score
             mininumScoreCluster = clusters
+    for c in clusters:
+        plt.scatter(*zip(*c), alpha = 0.4)
+    plt.plot([centroids[i][0] for i in range(K)], [centroids[i][1] for i in range(K)], 'kX', markersize=10, label="clusters")
+    plt.legend()
+    plt.title("{0} points clustered into {1} clusters in iteration number {2}".format(len(points), K, i + 1))
+    plt.show()
     return clusters
