@@ -31,98 +31,126 @@ def change(prev, current, changeInCentroidsGPU): #to compute change in previous 
                   (prev[i][1] - current[i][1]) ** 2   )
     changeInCentroidsGPU[0] = temp ** 0.5
 
-def calculateMeanNewClusters(centroidsGPU, clusterGPU):
-    for i in range(centroidsGPU.shape[0]):
-        pointcount = 0
-        temp = [0, 0]
-        for j in range(clusterGPU.shape[0]):
-            if clusterGPU[j][0] == i:
-                pointcount += 1
-                temp[0] += clusterGPU[j][1]
-                temp[1] += clusterGPU[j][2]
-        if pointcount:
-            centroidsGPU[i][0] = temp[0]/pointcount
-            centroidsGPU[i][1] = temp[1]/pointcount
-    return centroidsGPU
+@cuda.jit
+def calculateMeanNewClusters(points, cluster, centroids, pointsPerCluster):
+    p = cuda.grid(1)
+    if(p < points.shape[0]):
+        for d in range(points.shape[1]):
+            numba.cuda.atomic.add(centroids, (cluster[p], d), points[p][d])
+        numba.cuda.atomic.add(pointsPerCluster, (cluster[p], 0), 1)
     
 @cuda.jit
-def findNearestCluster(xPointsGPU, yPointsGPU, centroidsGPU, clusterGPU):
+def findNearestCluster(points, centroidsGPU, clusterGPU):
     p = cuda.grid(1)
-    minDistanceCentroid = -1
-    minDistance = my_inf()
-    for c in range(len(centroidsGPU)):
-        distance = ((xPointsGPU[p] - centroidsGPU[c][0]) ** 2 + 
-                    (yPointsGPU[p] - centroidsGPU[c][1]) ** 2) ** 0.5
-        if minDistance > distance:
-            minDistance = distance
-            minDistanceCentroid = c
-    clusterGPU[p][0] = minDistanceCentroid
+    if(p < points.shape[0]):
+        minDistanceCentroid = -1
+        minDistance = my_inf()
+        for c in range(len(centroidsGPU)):
+            distance = 0
+            for d in range(points.shape[1]):
+                distance += (points[p][d] - centroidsGPU[c][d]) ** 2
+            if minDistance > distance:
+                minDistance = distance
+                minDistanceCentroid = c
+        clusterGPU[p] = minDistanceCentroid
 
-def myCluster(points, K, visuals = True):
+def myCluster(points, K, visuals = True, pointsAlreadyOnGPU = False, centroids = None):
     blockdim = 16
     griddim = 1 + (len(points) - 1)//blockdim
 
     #Your kmeans code will go here to cluster given points in K clsuters. If visuals = True, the code will also plot graphs to show the current state of clustering
-    xPoints, yPoints = np.array([i[0] for i in points]), np.array([i[1] for i in points])
-    centroids = np.array([points[i] for i in rand.randint(0, len(points), K)]) #random centroids
-    prevCentroids = np.zeros(shape=(3,2))
+    if not centroids:
+        centroids = np.array([points[i] for i in rand.randint(0, len(points), K)]) #random centroids
+
+    prevCentroids = np.ones(shape=centroids.shape) * float('inf')
     changeInCentroids = np.array([changeCPU(prevCentroids, centroids)])
     iteration = 0
 
-    xPointsGPU = cuda.to_device(xPoints)
-    yPointsGPU = cuda.to_device(xPoints)
+    if pointsAlreadyOnGPU:
+        pointsGPU = points
+    else:
+        pointsGPU = cuda.to_device(points)
+
     centroidsGPU = cuda.to_device(centroids)
     prevCentroidsGPU = cuda.to_device(prevCentroids)
 
     changeInCentroidsGPU =  cuda.device_array_like(changeInCentroids)
     
-    clusters = np.zeros((len(points), 3))
+    clusters = np.zeros((len(points)), dtype=np.float64)
     clusterGPU = cuda.device_array_like(clusters)
-    print("HELLO ", changeInCentroids.shape)
-    while changeInCentroids[0] > 0: #stopping condition
+
+    # pointsPerCluster = np.zeros((len(centroids), 1))
+    # pointsPerClusterGPU = cuda.to_device(pointsPerCluster)
+
+    while changeInCentroids[0] > 0.001: #stopping condition
         iteration += 1
-        changeInCentroids[0] = changeCPU(prevCentroidsGPU, centroids)
         
-        findNearestCluster[griddim, blockdim](xPointsGPU, yPointsGPU, centroidsGPU, clusterGPU)
+        findNearestCluster[griddim, blockdim](pointsGPU, centroidsGPU, clusterGPU)
         numba.cuda.synchronize()
         
         prevCentroids = centroidsGPU.copy_to_host()
-        prevCentroidsGPU = cuda.to_device(prevCentroids)
         
+        # centroids = centroidsGPU.copy_to_host()
+
+        # clusters = clusterGPU.copy_to_host()
+        pointsPerCluster = np.zeros((len(centroids), 1), dtype=np.int32)
+        pointsPerClusterGPU = cuda.to_device(pointsPerCluster)
+
+        centroids = np.zeros_like(centroids, dtype=np.float32)
+        centroidsGPU = cuda.to_device(centroids)
+
+        calculateMeanNewClusters[griddim, blockdim](pointsGPU, clusterGPU, centroidsGPU, pointsPerClusterGPU)
+        numba.cuda.synchronize()
+
+        # centroidsGPU = cuda.to_device(centroids)
         centroids = centroidsGPU.copy_to_host()
+        pointsPerCluster = pointsPerClusterGPU.copy_to_host()
+        centroids = centroids / np.maximum(pointsPerCluster, 1)
 
-        centroids = calculateMeanNewClusters(centroids, clusterGPU)        
-        centroidsGPU = cuda.to_device(centroidsGPU)
+        # centroids = centroids * (pointsPerCluster != 0)
+
+        centroids = centroids + prevCentroids * (pointsPerCluster == 0)
+
+
+        # clusters = clusterGPU.copy_to_host()
+        # plt.scatter(points[:, 0], points[:, 1], c = clusters)
+        # plt.plot(centroids[:, 0], centroids[:, 1], "kX")
+        # plt.show()
+
+        centroidsGPU = cuda.to_device(centroids)
+
+        changeInCentroids[0] = changeCPU(prevCentroids, centroids)
+
     clusters = clusterGPU.copy_to_host()
-    return clusters
+    return clusters, centroids
 
-def SSE(clusters):
-    centroids = np.array([np.mean(clusters[i], axis = 0) for i in range(len(clusters))])
-    distances = np.array([clusters[i] - centroids[i] for i in range(len(clusters))])
+def SSE(points, clusters, centroids):
+    distances = np.array([points[i] - centroids[int(clusters[i])] for i in range(len(points))])
     squaredDistances = np.array([np.linalg.norm(distances[i])**2 for i in range(len(clusters))])
     return np.sum(squaredDistances)
 
-def clusterQuality(clusters):
-    score = SSE(clusters)
+def clusterQuality(points, clusters, centroids):
+    score = SSE(points, clusters, centroids)
     return score
 
 def runKMeans(points, K, N, visuals):
     clusters = None
     N = 1
     minimumScore, minimumScoreCluster = math.inf, None
-    myCluster(points, K, visuals = False)
-    #     centroids = np.array([np.mean(clusters[i], axis = 0) for i in range(len(clusters))])
-    #     if ((i + 1) % 5 == 0):    
-    #         plt.figure()
-    #         for c in clusters:
-    #             plt.scatter(*zip(*c), alpha = 0.4)
-    #         plt.plot([centroids[i][0] for i in range(K)], [centroids[i][1] for i in range(K)], 'kX', markersize=10, label="clusters")
-    #         plt.legend()
-    #         plt.title("{0} points clustered into {1} clusters in iteration number {2}".format(len(points), K, i + 1))
-    #         plt.show()
-    #     score = clusterQuality(clusters)
-    #     if score < minimumScore: 
-    #         minimumScore = score
-    #         mininumScoreCluster = clusters
+    clusters, centroids = myCluster(points, K, visuals = False)
+    return clusters, centroids
+
+    # if ((i + 1) % 5 == 0):    
+    #     plt.figure()
+    #     for c in clusters:
+    #         plt.scatter(*zip(*c), alpha = 0.4)
+    #     plt.plot([centroids[i][0] for i in range(K)], [centroids[i][1] for i in range(K)], 'kX', markersize=10, label="clusters")
+    #     plt.legend()
+    #     plt.title("{0} points clustered into {1} clusters in iteration number {2}".format(len(points), K, i + 1))
+    #     plt.show()
+    # score = clusterQuality(clusters)
+    # if score < minimumScore: 
+    #     minimumScore = score
+    #     mininumScoreCluster = clusters
     # return clusters
 
