@@ -133,26 +133,24 @@ def clusterQuality(points, clusters, centroids):
     score = SSE(points, clusters, centroids)
     return score
 
-def runKMeansGPU(points, K, given_centroids = None, N = 1):
+def runKMeansGPU(points, K, given_centroids = None, N = 1, visuals = False):
     clusters = None
     N = 1
     minimumScore, minimumScoreCluster = math.inf, None
     clusters, centroids = myCluster(points, K, visuals = False)
-    '''
-    plt.scatter(points[:, 0], points[:, 1], c = clusters)
-    plt.title("{0} points clustered into {1} clusters".format(len(points), K))
-    plt.savefig(f"../../figures/KMEANS_GPU_{len(points)}_points_{K}_clusters.jpg")
-    plt.show()
-    '''
+    if visuals:
+        plt.scatter(points[:, 0], points[:, 1], c = clusters)
+        plt.title("{0} points clustered into {1} clusters".format(len(points), K))
+        plt.savefig(f"../../figures/KMEANS_GPU_{len(points)}_points_{K}_clusters.jpg")
+        plt.show()
     return clusters, centroids
 
-def main_kmeans_gpu(points, K, seed, centroids = None):
+def main_kmeans_gpu(points, K, seed, centroids = None, visuals = False):
     np.random.seed(seed)
     random.seed(seed)
-    '''
-    plt.scatter(points[:, 0], points[:, 1], color='red', alpha = 0.1, edgecolor='blue')
-    plt.title("INITIAL POINTS")
-    plt.show()
-    '''
+    if visuals:
+        plt.scatter(points[:, 0], points[:, 1], color='red', alpha = 0.1, edgecolor='blue')
+        plt.title("INITIAL POINTS")
+        plt.show()
     clusters, centroids = runKMeansGPU(points, K, centroids)
     print ("The score of best Kmeans clustering is:", clusterQuality(points, clusters, centroids))
