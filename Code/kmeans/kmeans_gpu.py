@@ -133,24 +133,26 @@ def clusterQuality(points, clusters, centroids):
     score = SSE(points, clusters, centroids)
     return score
 
-def runKMeans(points, K, N, visuals):
+def runKMeansGPU(points, K, given_centroids = None, N = 1):
     clusters = None
     N = 1
     minimumScore, minimumScoreCluster = math.inf, None
     clusters, centroids = myCluster(points, K, visuals = False)
+    '''
+    plt.scatter(points[:, 0], points[:, 1], c = clusters)
+    plt.title("{0} points clustered into {1} clusters".format(len(points), K))
+    plt.savefig(f"../../figures/KMEANS_GPU_{len(points)}_points_{K}_clusters.jpg")
+    plt.show()
+    '''
     return clusters, centroids
 
-    # if ((i + 1) % 5 == 0):    
-    #     plt.figure()
-    #     for c in clusters:
-    #         plt.scatter(*zip(*c), alpha = 0.4)
-    #     plt.plot([centroids[i][0] for i in range(K)], [centroids[i][1] for i in range(K)], 'kX', markersize=10, label="clusters")
-    #     plt.legend()
-    #     plt.title("{0} points clustered into {1} clusters in iteration number {2}".format(len(points), K, i + 1))
-    #     plt.show()
-    # score = clusterQuality(clusters)
-    # if score < minimumScore: 
-    #     minimumScore = score
-    #     mininumScoreCluster = clusters
-    # return clusters
-
+def main_kmeans_gpu(points, K, seed, centroids = None):
+    np.random.seed(seed)
+    random.seed(seed)
+    '''
+    plt.scatter(points[:, 0], points[:, 1], color='red', alpha = 0.1, edgecolor='blue')
+    plt.title("INITIAL POINTS")
+    plt.show()
+    '''
+    clusters, centroids = runKMeansGPU(points, K, centroids)
+    print ("The score of best Kmeans clustering is:", clusterQuality(points, clusters, centroids))
