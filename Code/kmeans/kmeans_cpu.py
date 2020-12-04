@@ -101,5 +101,5 @@ def main_kmeans_cpu(points, K, seed, centroids = None, visuals = False):
         plt.scatter(points[:, 0], points[:, 1], color='red', alpha = 0.1, edgecolor='blue')
         plt.title("INITIAL POINTS")
         plt.show()
-    clusters, centroids = runKMeansCPU(points, K, centroids, visuals)
+    clusters, centroids = runKMeansCPU(points, K, given_centroids = centroids, visuals = visuals)
     print ("The score of best Kmeans clustering is:", clusterQuality(points, clusters, centroids))

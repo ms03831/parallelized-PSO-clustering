@@ -54,7 +54,7 @@ def findNearestCluster(points, centroidsGPU, clusterGPU):
                 minDistanceCentroid = c
         clusterGPU[p] = minDistanceCentroid
 
-def myCluster(points, K, visuals = True, pointsAlreadyOnGPU = False, centroids = None):
+def myCluster(points, K, visuals = False, pointsAlreadyOnGPU = False, centroids = None):
     blockdim = 16
     griddim = 1 + (len(points) - 1)//blockdim
 
@@ -137,7 +137,7 @@ def runKMeansGPU(points, K, given_centroids = None, N = 1, visuals = False):
     clusters = None
     N = 1
     minimumScore, minimumScoreCluster = math.inf, None
-    clusters, centroids = myCluster(points, K, visuals = False)
+    clusters, centroids = myCluster(points, K, given_centroids, visuals = False)
     if visuals:
         plt.scatter(points[:, 0], points[:, 1], c = clusters)
         plt.title("{0} points clustered into {1} clusters".format(len(points), K))
@@ -145,12 +145,12 @@ def runKMeansGPU(points, K, given_centroids = None, N = 1, visuals = False):
         plt.show()
     return clusters, centroids
 
-def main_kmeans_gpu(points, K, seed, centroids = None, visuals = False):
+def main_kmeans_gpu(points, K, seed, given_centroids = None, visuals = False):
     np.random.seed(seed)
     random.seed(seed)
     if visuals:
         plt.scatter(points[:, 0], points[:, 1], color='red', alpha = 0.1, edgecolor='blue')
         plt.title("INITIAL POINTS")
         plt.show()
-    clusters, centroids = runKMeansGPU(points, K, centroids)
+    clusters, centroids = runKMeansGPU(points, K, visuals = visuals, given_centroids =  given_centroids)
     print ("The score of best Kmeans clustering is:", clusterQuality(points, clusters, centroids))
