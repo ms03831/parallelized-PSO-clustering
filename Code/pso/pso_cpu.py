@@ -1,11 +1,11 @@
-
 import math
 from random import random, shuffle, gauss, sample, seed
 from matplotlib import pyplot as plt
+from numba import cuda
 import numpy
+import numba
+from numba import njit
 from numpy import inf
-from pso_utils import init_particles
-from random import random, shuffle, gauss, sample, seed
 
 def init_particles(n_particles, n_clusters, data):
     particles_pos = []
@@ -94,7 +94,7 @@ def main_CPU(
         plt.show()    
     
 
-def main_pso_cpu(
+def main(
         data,
         c,
         random_state,
