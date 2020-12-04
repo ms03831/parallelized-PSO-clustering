@@ -52,15 +52,15 @@ def main_CPU(
         c1 = 0.3,
         c2 = 0.3
     ):
-    
-    initEnd = time.time()
-    initTime = round(initEnd - initStart, 3)
+    initStart = time.time()
 
     particles_pos, particles_vel = init_particles(particles, c, data)
     particles_best_pos = [i.copy() for i in particles_pos]
     particles_best_fit = [float('inf') for i in range(len(particles_pos))]
     particles_pos = numpy.array(particles_pos)
 
+    initEnd = time.time()
+    initTime = round(initEnd - initStart, 3)
 
     global_best_fit = float('inf')
     global_best_pos = None

@@ -92,14 +92,15 @@ def main_GPU(
         c2 = 0.3,
         blockdim = 64
     ):
+    initStart = time.time()
     griddim = (particles - 1) // blockdim + 1
     
-    initEnd = time.time()
-    initTime = round(initEnd - initStart, 3)
-
     particles_pos, particles_vel = init_particles(particles, c, data)
     particles_pos = numpy.array(particles_pos)
     particles_vel = numpy.array(particles_vel)
+
+    initEnd = time.time()
+    initTime = round(initEnd - initStart, 3)
 
     particles_best_pos = [i.copy() for i in particles_pos]
     particles_best_fit = [float('inf') for i in range(len(particles_pos))]
