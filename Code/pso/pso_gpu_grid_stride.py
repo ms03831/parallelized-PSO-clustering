@@ -6,7 +6,6 @@ import numpy
 import numba
 from numba import njit
 from numpy import inf
-from config import BLOCKDIM, DATADIM 
 
 @njit
 def my_inf():
@@ -35,7 +34,7 @@ def fitness_GPU(particles_pos, data, num_particles, particle_fitness):
             particle = particles_pos[index]
             sum_dists = 0
             for point in range(data.shape[0]):
-                min_dist = -my_inf()
+                min_dist = my_inf()
                 for centroid in range(0, particle.shape[0], data_dim):
                     dist = 0
                     for k in range(data_dim):
@@ -51,12 +50,12 @@ def update_GPU(particles_pos, particles_vel, particles_best_pos, global_best_pos
     start = cuda.grid(1)
     stride = cuda.blockDim.x * cuda.gridDim.x;
     for i in range(start, num_particles, stride):
-        #if(i < num_particles):
-        r1 = random_numbers[i * 2]
-        r2 = random_numbers[i * 2 + 1]
-        for d in range(len(particles_pos[i])):
-            particles_vel[i][d] = w * particles_vel[i][d] + c1 * r1 * (particles_best_pos[i][d] - particles_pos[i][d]) + c2 * r2 * (global_best_pos[d] - particles_pos[i][d])
-            particles_pos[i][d] += particles_vel[i][d]
+        if(i < num_particles):
+            r1 = random_numbers[i * 2]
+            r2 = random_numbers[i * 2 + 1]
+            for d in range(len(particles_pos[i])):
+                particles_vel[i][d] = w * particles_vel[i][d] + c1 * r1 * (particles_best_pos[i][d] - particles_pos[i][d]) + c2 * r2 * (global_best_pos[d] - particles_pos[i][d])
+                particles_pos[i][d] += particles_vel[i][d]
 
 @cuda.jit
 def find_max(fitness, x):
@@ -64,6 +63,7 @@ def find_max(fitness, x):
 
 def main_GPU(
         data,
+        datadim,
         n = 10000,
         particles = 10000,
         iterations = 100,
@@ -156,4 +156,4 @@ def main(
         c2 = 0.2,
     ):
     seed(random_state)
-    main_GPU(data, DATADIM, particles=particles, iterations=iterations, c=c, w=w, c1=c1, c2=c2)
+    main_GPU(data, DATADIM, blockdim = BLOCKDIM, particles=particles, iterations=iterations, c=c, w=w, c1=c1, c2=c2)
