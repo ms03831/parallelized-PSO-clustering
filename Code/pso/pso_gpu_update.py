@@ -42,11 +42,15 @@ def fitness_GPU(particles_pos, data, num_particles, particle_fitness):
             sum_dists += min_dist
         particle_fitness[index] = sum_dists
 
-def update_CPU(particles_pos, particles_vel, particles_best_pos, global_best_pos, i, w, c1, c2):
-    r1, r2 = random(), random()
-    for d in range(len(particles_pos[i])):
-        particles_vel[i][d] = w * particles_vel[i][d] + c1 * r1 * (particles_best_pos[i][d] - particles_pos[i][d]) + c2 * r2 * (global_best_pos[d] - particles_pos[i][d])
-        particles_pos[i][d] += particles_vel[i][d]
+@cuda.jit
+def update_GPU(particles_pos, particles_vel, particles_best_pos, global_best_pos, w, c1, c2, random_numbers, num_particles):
+    i = cuda.grid(1)
+    if(i < num_particles):
+        r1 = random_numbers[i * 2]
+        r2 = random_numbers[i * 2 + 1]
+        for d in range(len(particles_pos[i])):
+            particles_vel[i][d] = w * particles_vel[i][d] + c1 * r1 * (particles_best_pos[i][d] - particles_pos[i][d]) + c2 * r2 * (global_best_pos[d] - particles_pos[i][d])
+            particles_pos[i][d] += particles_vel[i][d]
 
 @cuda.jit
 def find_max(fitness, x):
@@ -64,40 +68,37 @@ def main_GPU(
         c2 = 0.3,
         blockdim = 64
     ):
-    initStart = time.time()
-
-    griddim = 1 + (particles - 1)//blockdim
+    griddim = (particles - 1) // blockdim + 1
+     
     particles_pos, particles_vel = init_particles(particles, c, data)
+    particles_pos = numpy.array(particles_pos)
+    particles_vel = numpy.array(particles_vel)
+
     particles_best_pos = [i.copy() for i in particles_pos]
     particles_best_fit = [float('inf') for i in range(len(particles_pos))]
-    particles_pos = numpy.array(particles_pos)
+    particles_best_pos = numpy.array(particles_best_pos)
+    particles_best_fit = numpy.array(particles_best_fit)
     
-    initEnd = time.time()
-    initTime = round(initEnd - initStart, 3)
-
     global_best_fit = float('inf')
     global_best_pos = None
-    global_best_index = -1
-
-    totalFitnessAvg = 0
-    totalUpdateAvg = 0
+    global_best_index = None
     
-    particles_pos_gpu = cuda.to_device(particles_pos)
     data_gpu = cuda.to_device(data)
+    particles_pos_gpu = cuda.to_device(particles_pos)
+    particles_vel_gpu = cuda.to_device(particles_vel)
+    particles_best_pos_gpu = cuda.to_device(particles_best_pos)
+    particles_best_fit_gpu = cuda.to_device(particles_best_fit)
 
     fitness_cpu = numpy.arange(particles).astype("float")
     fitness_gpu = cuda.to_device(fitness_cpu)
     
     for iter in range(iterations):
-        totalFitnessStart = time.time()
-        fitness[griddim, blockdim](particles_pos_gpu, data_gpu, particles, fitness_gpu)
+        
+        fitness_GPU[griddim, blockdim](particles_pos_gpu, data_gpu, particles, fitness_gpu)
         numba.cuda.synchronize()
-        
         fitness_gpu.copy_to_host(fitness_cpu)
-        
-        data_gpu.copy_to_host(data)
-        particles_pos_gpu.copy_to_host(particles_pos)
 
+        random_numbers = []
         for p in range(len(particles_pos)):
             fitness_p = fitness_cpu[p]
             if(fitness_p < particles_best_fit[p]):
@@ -107,22 +108,19 @@ def main_GPU(
                 global_best_fit = fitness_p
                 global_best_pos = particles_pos[p].copy()
                 global_best_index = p
+            random_numbers.append(random())
+            random_numbers.append(random())
+
+        random_numbers_gpu = cuda.to_device(numpy.array(random_numbers))
+        global_best_pos_gpu = cuda.to_device(global_best_pos)
+        particles_best_pos_gpu = cuda.to_device(particles_best_pos)
         
-        totalFitnessEnd = time.time() - totalFitnessStart
-        totalFitnessAvg += round(totalFitnessEnd, 3)
+        update_GPU[griddim, blockdim](particles_pos_gpu, particles_vel_gpu, particles_best_pos_gpu, global_best_pos_gpu, w, c1, c2, random_numbers_gpu, particles)
+        numba.cuda.synchronize()
 
-        totalUpdateStart = time.time()
-        for p in range(len(particles_pos)):
-            update(particles_pos, particles_vel, particles_best_pos, global_best_pos, p, w, c1, c2)
+        particles_pos_gpu.copy_to_host(particles_pos)
 
-        particles_pos_gpu = cuda.to_device(particles_pos)    
-        totalUpdateEnd = time.time() - totalUpdateStart
-        totalUpdateAvg += round(totalUpdateEnd, 3)
-    
-    totalFitnessAvg = round(totalFitnessAvg/iterations, 3)
-    totalUpdateAvg = round(totalUpdateAvg/iterations, 3)
-    fitnessPerParticle = round(totalFitnessAvg/particles, 3)
-    updatePerParticle = round(totalUpdateAvg/particles, 3)
+
 
     for i in range(global_best_index, global_best_index + 1):
         l = []
@@ -137,10 +135,8 @@ def main_GPU(
                     min_dist = dist
                     min_value = centroid // len(data[0])
             l.append(min_value)
-        
         plt.scatter(*zip(*data), c = l)
         plt.show()
-    return (initTime, totalFitnessAvg, totalUpdateAvg, fitnessPerParticle, updatePerParticle)
 
 def main(
         data,
