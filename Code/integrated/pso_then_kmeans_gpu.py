@@ -4,6 +4,7 @@ from numpy import random as rand
 import numpy as np
 import math
 from random import random, shuffle, gauss, sample, seed
+import random as rd
 from matplotlib import pyplot as plt
 from numba import njit, cuda
 import numpy
@@ -59,12 +60,12 @@ def findNearestCluster(points, centroidsGPU, clusterGPU):
                 minDistanceCentroid = c
         clusterGPU[p] = minDistanceCentroid
 
-def myCluster(points, K, pointsAlreadyOnGPU = False, centroids = None):
+def myCluster(points, K, pointsAlreadyOnGPU = False, centroids = []):
     blockdim = 16
     griddim = 1 + (len(points) - 1)//blockdim
 
     #Your kmeans code will go here to cluster given points in K clsuters. If visuals = True, the code will also plot graphs to show the current state of clustering
-    if not centroids:
+    if not len(centroids):
         centroids = np.array([points[i] for i in rand.randint(0, len(points), K)]) #random centroids
 
     prevCentroids = np.ones(shape=centroids.shape) * float('inf')
@@ -151,8 +152,8 @@ def runKMeansGPU(points, K, given_centroids = None, N = 1, visuals = False):
     return clusters, centroids
 
 def main_kmeans_gpu(points, K, seed, given_centroids = None, visuals = False):
+    rd.seed(seed)
     np.random.seed(seed)
-    random.seed(seed)
     if visuals:
         plt.scatter(points[:, 0], points[:, 1], color='red', alpha = 0.1, edgecolor='blue')
         plt.title("INITIAL POINTS")
@@ -315,8 +316,6 @@ def main_GPU(
                     min_dist = dist
                     min_value = centroid // len(data[0])
             l.append(min_value)
-        plt.scatter(*zip(*data), c = l)
-        plt.show()
     return global_best_pos, data_gpu
 
 def main(
@@ -331,10 +330,14 @@ def main(
         c1 = 0.15,
         c2 = 0.2,
     ):
-    seed(random_state)
+    start = time.time()
+    rd.seed(random_state)
+    np.random.seed(random_state)
     centroids, points = main_GPU(data, DATADIM, blockdim = BLOCKDIM, particles=particles, iterations=iterations, c=c, w=w, c1=c1, c2=c2)
-    centroids = centroids.reshape((5, 2))
+    centroids = centroids.reshape((c, DATADIM))
     
     #running kmeans
     main_kmeans_gpu(points, c, random_state, visuals = True, given_centroids = centroids)
-    return main_kmeans_cpu
+    end = time.time()
+    print(f"time taken: {end - start}") 
+    return 
