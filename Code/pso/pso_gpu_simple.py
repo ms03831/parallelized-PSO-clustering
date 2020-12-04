@@ -156,4 +156,5 @@ def main(
         c2 = 0.2,
     ):
     seed(random_state)
-    main_GPU(data, DATADIM, blockdim = BLOCKDIM, particles=particles, iterations=iterations, c=c, w=w, c1=c1, c2=c2)
+    initTime, totalFitnessAvg, totalUpdateAvg, fitnessPerParticle, updatePerParticle = main_GPU(data, DATADIM, blockdim = BLOCKDIM, particles=particles, iterations=iterations, c=c, w=w, c1=c1, c2=c2)
+    return initTime, totalFitnessAvg, totalUpdateAvg, fitnessPerParticle, updatePerParticle

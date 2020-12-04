@@ -6,6 +6,7 @@ import numpy
 import numba
 from numba import njit
 from numpy import inf
+import time 
 
 def init_particles(n_particles, n_clusters, data):
     particles_pos = []
@@ -52,6 +53,9 @@ def main_CPU(
         c2 = 0.3
     ):
     
+    initEnd = time.time()
+    initTime = round(initEnd - initStart, 3)
+
     particles_pos, particles_vel = init_particles(particles, c, data)
     particles_best_pos = [i.copy() for i in particles_pos]
     particles_best_fit = [float('inf') for i in range(len(particles_pos))]
@@ -62,7 +66,11 @@ def main_CPU(
     global_best_pos = None
     global_best_index = -1
 
+    totalFitnessAvg = 0
+    totalUpdateAvg = 0
+
     for iter in range(iterations):
+        totalFitnessStart = time.time()
         for p in range(len(particles_pos)):
             fitness_p = fitness_CPU(particles_pos, data, p)
             if(fitness_p < particles_best_fit[p]):
@@ -72,10 +80,22 @@ def main_CPU(
                 global_best_fit = fitness_p
                 global_best_pos = particles_pos[p].copy()
                 global_best_index = p
+        totalFitnessEnd = time.time() - totalFitnessStart
+        totalFitnessAvg += round(totalFitnessEnd, 3)
 
+        totalUpdateStart = time.time()
+        
         for p in range(len(particles_pos)):
             update_CPU(particles_pos, particles_vel, particles_best_pos, global_best_pos, p, w, c1, c2)
+        totalUpdateEnd = time.time() - totalUpdateStart
+        totalUpdateAvg += round(totalUpdateEnd, 3)
     
+    totalFitnessAvg = round(totalFitnessAvg/iterations, 3)
+    totalUpdateAvg = round(totalUpdateAvg/iterations, 3)
+    fitnessPerParticle = round(totalFitnessAvg/particles, 3)
+    updatePerParticle = round(totalUpdateAvg/particles, 3)
+
+
     for i in range(global_best_index, global_best_index + 1):
         l = []
         for point in data:
@@ -92,7 +112,7 @@ def main_CPU(
         
         plt.scatter(*zip(*data), c = l)
         plt.show()    
-    
+    return (initTime, totalFitnessAvg, totalUpdateAvg, fitnessPerParticle, updatePerParticle)
 
 def main(
         data,
@@ -107,4 +127,5 @@ def main(
         c2 = 0.2,
     ):
     seed(random_state)
-    main_CPU(data, particles=particles, iterations=iterations, c=c, w=w, c1=c1, c2=c2)
+    initTime, totalFitnessAvg, totalUpdateAvg, fitnessPerParticle, updatePerParticle = main_CPU(data, particles=particles, iterations=iterations, c=c, w=w, c1=c1, c2=c2)
+    return (initTime, totalFitnessAvg, totalUpdateAvg, fitnessPerParticle, updatePerParticle)

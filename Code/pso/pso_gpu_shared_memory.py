@@ -7,6 +7,7 @@ import numba
 from numba import njit
 from numpy import inf
 from config import BLOCKDIM, DATADIM 
+import time 
 
 @njit
 def my_inf():
@@ -92,7 +93,10 @@ def main_GPU(
         blockdim = 64
     ):
     griddim = (particles - 1) // blockdim + 1
-     
+    
+    initEnd = time.time()
+    initTime = round(initEnd - initStart, 3)
+
     particles_pos, particles_vel = init_particles(particles, c, data)
     particles_pos = numpy.array(particles_pos)
     particles_vel = numpy.array(particles_vel)
@@ -106,6 +110,9 @@ def main_GPU(
     global_best_pos = None
     global_best_index = None
     
+    totalFitnessAvg = 0
+    totalUpdateAvg = 0
+
     data_gpu = cuda.to_device(data)
     particles_pos_gpu = cuda.to_device(particles_pos)
     particles_vel_gpu = cuda.to_device(particles_vel)
@@ -116,7 +123,7 @@ def main_GPU(
     fitness_gpu = cuda.to_device(fitness_cpu)
     
     for iter in range(iterations):
-        
+        totalFitnessStart = time.time()
         fitness_GPU[griddim, blockdim](particles_pos_gpu, data_gpu, particles, fitness_gpu)
         numba.cuda.synchronize()
         fitness_gpu.copy_to_host(fitness_cpu)
@@ -134,6 +141,12 @@ def main_GPU(
             random_numbers.append(random())
             random_numbers.append(random())
 
+        totalFitnessEnd = time.time() - totalFitnessStart
+        totalFitnessAvg += round(totalFitnessEnd, 3)
+
+        totalUpdateStart = time.time()
+        
+
         random_numbers_gpu = cuda.to_device(numpy.array(random_numbers))
         global_best_pos_gpu = cuda.to_device(global_best_pos)
         particles_best_pos_gpu = cuda.to_device(particles_best_pos)
@@ -142,6 +155,13 @@ def main_GPU(
         numba.cuda.synchronize()
 
         particles_pos_gpu.copy_to_host(particles_pos)
+        totalUpdateEnd = time.time() - totalUpdateStart
+        totalUpdateAvg += round(totalUpdateEnd, 3)
+    
+    totalFitnessAvg = round(totalFitnessAvg/iterations, 3)
+    totalUpdateAvg = round(totalUpdateAvg/iterations, 3)
+    fitnessPerParticle = round(totalFitnessAvg/particles, 3)
+    updatePerParticle = round(totalUpdateAvg/particles, 3)
 
 
 
@@ -160,6 +180,7 @@ def main_GPU(
             l.append(min_value)
         plt.scatter(*zip(*data), c = l)
         plt.show()
+    return (initTime, totalFitnessAvg, totalUpdateAvg, fitnessPerParticle, updatePerParticle)
 
 def main(
         data,
@@ -174,4 +195,5 @@ def main(
         c2 = 0.2,
     ):
     seed(random_state)
-    main_GPU(data, DATADIM, particles=particles, iterations=iterations, c=c, w=w, c1=c1, c2=c2)
+    initTime, totalFitnessAvg, totalUpdateAvg, fitnessPerParticle, updatePerParticle = main_GPU(data, DATADIM, blockdim = BLOCKDIM, particles=particles, iterations=iterations, c=c, w=w, c1=c1, c2=c2)
+    return initTime, totalFitnessAvg, totalUpdateAvg, fitnessPerParticle, updatePerParticle
