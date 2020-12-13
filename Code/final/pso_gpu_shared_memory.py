@@ -26,6 +26,10 @@ def init_particles(n_particles, n_clusters, data):
         particles_vel.append([random() * 0.5 - 0.25 for i in range(n_clusters * len(data[0]))])
     return particles_pos, particles_vel
 
+# Shared memory fitness calculation
+# In a single phase each block imports datapoints into shared memory equal to BlockDim and calculates
+# distane from all the imported data points
+
 @cuda.jit
 def fitness_GPU(particles_pos, data, num_particles, particle_fitness):
     index = cuda.grid(1)
@@ -46,7 +50,7 @@ def fitness_GPU(particles_pos, data, num_particles, particle_fitness):
             for d in range(DATADIM):
                 tempData[cuda.threadIdx.x, d] = 0
 
-        cuda.syncthreads()              
+        cuda.syncthreads()
 
         if index < num_particles:
             for point in range(tempData.shape[0]):
@@ -56,15 +60,13 @@ def fitness_GPU(particles_pos, data, num_particles, particle_fitness):
                         dist = 0
                         for k in range(data_dim):
                             dist += (tempData[point, k] - particle[centroid + k]) ** 2
-                        if(dist < min_dist):
-                            min_dist = dist
+                        min_dist = min(dist, min_dist)
                     sum_dists += min_dist
 
         cuda.syncthreads()
 
     if index < num_particles:
-        particle_fitness[index] = sum_dists #/ data.shape[0]
-    
+        particle_fitness[index] = sum_dists #/ data.shape[0]    
 
 @cuda.jit
 def update_GPU(particles_pos, particles_vel, particles_best_pos, global_best_pos, w, c1, c2, random_numbers, num_particles):
