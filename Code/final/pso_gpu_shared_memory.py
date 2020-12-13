@@ -181,8 +181,6 @@ def main_GPU(
                     min_dist = dist
                     min_value = centroid // len(data[0])
             l.append(min_value)
-        plt.scatter(*zip(*data), c = l)
-        plt.show()
     return l
     
 def main(
