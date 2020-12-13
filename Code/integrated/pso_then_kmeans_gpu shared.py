@@ -1,5 +1,4 @@
 import random
-import config
 from matplotlib import pyplot as plt
 from numpy import random as rand
 import numpy as np
@@ -13,6 +12,9 @@ import numba
 from numba import njit
 from numpy import inf
 import time 
+
+BLOCKDIM = 64
+DATADIM = 32
 
 @cuda.jit(device=True)
 def my_inf():
