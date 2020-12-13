@@ -12,6 +12,7 @@ import numba
 from numba import njit
 from numpy import inf
 import time 
+from config import BLOCKDIM, DATADIM
 
 @cuda.jit(device=True)
 def my_inf():
@@ -185,7 +186,7 @@ def init_particles(n_particles, n_clusters, data):
 @cuda.jit
 def fitness_GPU(particles_pos, data, num_particles, particle_fitness):
     index = cuda.grid(1)
-    tempData = cuda.shared.array(shape=(64, 2), dtype=numba.float64)
+    tempData = cuda.shared.array(shape=(BLOCKDIM, DATADIM), dtype=numba.float64)
     data_dim = data.shape[1]
 
     if index < num_particles:
@@ -212,8 +213,7 @@ def fitness_GPU(particles_pos, data, num_particles, particle_fitness):
                         dist = 0
                         for k in range(data_dim):
                             dist += (tempData[point, k] - particle[centroid + k]) ** 2
-                        if(dist < min_dist):
-                            min_dist = dist
+                        min_dist = min(dist, min_dist)
                     sum_dists += min_dist
 
         cuda.syncthreads()
