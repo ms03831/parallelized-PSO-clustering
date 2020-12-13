@@ -1,62 +1,12 @@
 import random
-from matplotlib import pyplot as plt
 from numpy import random as rand
 import numpy as np
 import math
 
 from random import random, shuffle, gauss, sample, seed
-from sklearn import datasets
-from sklearn.decomposition import PCA
 import random 
 import numpy as np 
 
-def getPointsFromDataIris():
-    # Iris
-    iris = datasets.load_iris()
-    data = iris.data
-    labels = iris.target
-    maxi = data.max(axis = 0)
-    mini = data.min(axis = 0)
-    data = (data - mini) / (maxi - mini)
-    return data, labels, 3
-
-def getPointsFromDataDigits():
-    # Digits
-    digits = datasets.load_digits()
-    data = digits.data
-    labels = digits.target
-
-    n_digits = 10
-    data = PCA(n_components=2).fit_transform(data)
-
-    maxi = data.max(axis = 0)
-    mini = data.min(axis = 0)
-    diff = maxi - mini
-    diff = (diff == 0) + diff
-    data = (data - mini) / (diff)
-    return data, labels, 10
-
-def initializePoints(n, c = 3):
-    l = [   
-            [random.gauss(0.5, 0.1) + j, 
-            random.gauss(0.5, 0.1)] 
-            for j in range(c) for i in range(n)
-        ]
-    random.shuffle(l)
-    return np.array(l)
-
-def init_particles(n_particles, n_clusters, data):
-    particles_pos = []
-    particles_vel = []
-    data = data.tolist()
-    for i in range(n_particles):
-        l2 = []
-        clusters = sample(data, n_clusters)
-        for cluster in clusters:
-            l2.extend(cluster)
-        particles_pos.append(l2)
-        particles_vel.append([random() * 0.5 - 0.25 for i in range(n_clusters * len(data[0]))])
-    return particles_pos, particles_vel
 
 def initializePoints(n, c = 3):
     l = [   
@@ -76,7 +26,38 @@ def calcDistance(point, centroid):
     for d in range(len(point)):
         temp += ( (point[d] - centroid[d]) ** 2 )
     return temp ** 0.5 
-                  
+
+def calculateCluster(points, centroids):
+    cluster = dict()
+    
+    for c in range(len(centroids)):
+        cluster[c] = []
+
+    for p in range(len(points)):
+        min_cent = -1 
+        min_dist = math.inf
+        for c in range(len(centroids)):
+            dist = calcDistance(points[p], centroids[c]) 
+            if dist < min_dist:
+                min_dist = dist
+                min_cent = c
+        cluster[min_cent].append(points[p])
+    return cluster
+
+def calculateNewCentroids(cluster):
+    centroids = []
+    for c in range(len(cluster)):
+        mean_c = [0, 0]
+        count = 0
+        for p in range(len(cluster[c])):
+            count += 1
+            mean_c[0] += cluster[c][p][0]
+            mean_c[1] += cluster[c][p][1]
+        mean_c[0] /= count
+        mean_c[1] /= count
+        centroids.append(mean_c)
+    return np.array(centroids)
+
 def cluster(points,K,visuals = True):
     clusters=[]
     #Your kmeans code will go here to cluster given points in K clsuters. 
@@ -89,24 +70,14 @@ def cluster(points,K,visuals = True):
         iteration += 1
         changeInCentroids = change(prevCentroids, centroids)
         
-        cluster = dict([(c, []) for c in range(len(centroids))])
-        for p in range(len(points)):
-            belongsTo = dict()
-            minDistanceCentroid = np.argmin([calcDistance(points[p], c) 
-                                             for c in centroids]) #index of nearest centroid
-            #belongsTo[points[p]] = centroids[minDistanceCentroid] 
-            cluster[minDistanceCentroid].append(points[p])
+        cluster = calculateCluster(points, centroids)
+        
         prevCentroids = centroids.copy()
         centroids = np.zeros(centroids.shape)
-        for i in range(K):
-            centroids[i] = np.mean(cluster[i], axis = 0)
+
+        centroids = calculateNewCentroids(cluster)
         clusters = [cluster[i] for i in range(K)]
-        # for c in clusters:
-        #     plt.scatter(*zip(*c), alpha = 0.4)
-        # plt.plot([centroids[i][0] for i in range(K)], [centroids[i][1] for i in range(K)], 'kX', markersize=10, label="clusters")
-        # plt.legend()
-        # plt.title("{0} points clustered into {1} clusters in inner iteration number {2}".format(len(points), K, iteration))
-        # plt.show()
+
     return np.array(clusters), np.array(centroids)
 
 
@@ -124,20 +95,7 @@ def runKMeansCPU(points, K, given_centroids = None, N = 1, visuals = False):
     minimumScore, minimumScoreCluster = math.inf, None
     for i in range(N):
         clusters, centroids = cluster(points, K, given_centroids)
-        '''
-        if ((i + 1) % 5 == 0):    
-            plt.figure()
-            for c in clusters:
-                plt.scatter(*zip(*c), alpha = 0.4)
-            plt.plot([centroids[i][0] for i in range(K)], [centroids[i][1] for i in range(K)], 'kX', markersize=10, label="clusters")
-            plt.legend()
-            plt.title("{0} points clustered into {1} clusters in iteration number {2}".format(len(points), K, i + 1))
-            plt.show()
-        score = clusterQuality(points, clusters, centroids)
-        if score < minimumScore: 
-            minimumScore = score
-            mininumScoreCluster = clusters
-        '''
+        
     colors = []
     for i in points:
         colors.append(((centroids - i) ** 2).sum(axis = 1).argmin())
@@ -158,13 +116,13 @@ def main_kmeans_cpu(points, K, seed, centroids = None, visuals = False):
     clusters, centroids = runKMeansCPU(points, K, given_centroids = centroids, visuals = visuals)
     print ("The score of best Kmeans clustering is:", clusterQuality(points, clusters, centroids))
 
+if __name__ == "__main__":
+    seed = 20
+    np.random.seed(seed)
+    random.seed(seed)
 
-seed = 20
-np.random.seed(seed)
-random.seed(seed)
-
-K = 5
-N = 2000
-points = initializePoints(N, K)
-main_kmeans_cpu(points, K, seed, visuals = False)
+    K = 5
+    N = 2000
+    points = initializePoints(N, K)
+    main_kmeans_cpu(points, K, seed, visuals = False)
 
