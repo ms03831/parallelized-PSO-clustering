@@ -12,6 +12,7 @@ import numba
 from numba import njit
 from numpy import inf
 import time 
+import config
 
 @cuda.jit(device=True)
 def my_inf():
