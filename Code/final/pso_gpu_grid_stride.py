@@ -163,10 +163,8 @@ def main_GPU(
                     min_dist = dist
                     min_value = centroid // len(data[0])
             l.append(min_value)
-        plt.scatter(*zip(*data), c = l)
-        plt.show()
-    return (initTime, totalFitnessAvg, totalUpdateAvg, fitnessPerParticle, updatePerParticle)
-
+    return l
+    
 def main(
         data,
         c,
@@ -180,5 +178,5 @@ def main(
         c2 = 0.2,
     ):
     seed(random_state)
-    initTime, totalFitnessAvg, totalUpdateAvg, fitnessPerParticle, updatePerParticle = main_GPU(data, DATADIM, blockdim = BLOCKDIM, particles=particles, iterations=iterations, c=c, w=w, c1=c1, c2=c2)
-    return initTime, totalFitnessAvg, totalUpdateAvg, fitnessPerParticle, updatePerParticle
+    centroids = main_GPU(data, DATADIM, blockdim = BLOCKDIM, particles=particles, iterations=iterations, c=c, w=w, c1=c1, c2=c2)
+    return centroids
