@@ -147,7 +147,6 @@ def runKMeansGPU(points, K, given_centroids = None, N = 1, visuals = False):
     if visuals:
         plt.scatter(points[:, 0], points[:, 1], c = clusters)
         plt.title("{0} points clustered into {1} clusters".format(len(points), K))
-        plt.savefig(f"../../figures/KMEANS_GPU_{len(points)}_points_{K}_clusters.jpg")
         plt.show()
     return clusters, centroids
 
