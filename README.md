@@ -1,6 +1,10 @@
 
 # Parallelized Hybrid PSO-KMeans Clustering Algorithm 
 ### Final Project - CS 432 GPU Accelerated Computing
+
+### Instructions to run
+###### open the notebook file [here](https://github.com/ms03831/parallelized-PSO-clustering/blob/dev/gpu_project_run.ipynb). It includes link to the colab file that includes the demo of all files.
+
 ##### Members:
 1. Rayyan-ul-Haq ru03588
 2. Mudasir Hanif Shaikh ms03831
