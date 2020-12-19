@@ -153,4 +153,5 @@ def main_kmeans_gpu(points, K, seed, given_centroids = None, visuals = False):
         plt.title("INITIAL POINTS")
         plt.show()
     clusters, centroids = runKMeansGPU(points, K, visuals = visuals, given_centroids =  given_centroids)
-    print ("The score of best Kmeans clustering is:", clusterQuality(points, clusters, centroids))
+    #print ("The score of best Kmeans clustering is:", clusterQuality(points, clusters, centroids))
+    return clusters, centroids
